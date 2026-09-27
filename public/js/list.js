@@ -1,81 +1,93 @@
-const loadList = async function() {
-  const response = await fetch('/data')
-  const appdata   = await response.json()
+const { useState, useEffect } = React;
 
-  const tbody = document.querySelector('#list-body')
-  tbody.innerHTML = ''
+function ToDoRow({ item, onDelete, onSave }) {
+  const [editing, setEditing] = useState(false);
+  const [task, setTask] = useState(item.task);
+  const [category, setCategory] = useState(item.category);
+  const [creationDate, setCreationDate] = useState(item.creationDate);
+  const [deadline, setDeadline] = useState(item.deadline);
 
-  appdata.forEach(function(item) {
-    const row = document.createElement('tr')
-    row.dataset.id = item._id
-
-    row.innerHTML = `
-      <td class="cell-task">${item.task}</td>
-      <td class="cell-category">${item.category}</td>
-      <td class="cell-created">${item.creationDate}</td>
-      <td class="cell-deadline">${item.deadline}</td>
-      <td class="cell-priority">${item.priority}</td>
-      <td>
-        <button class="btn btn-primary edit-btn">Edit</button>
-        <button class="btn btn-danger delete-btn">Delete</button>
-      </td>
-    `
-    tbody.appendChild(row)
-  })
-
-  tbody.querySelectorAll('.delete-btn').forEach(function(button) {
-    button.onclick = async function() {
-      const id = button.closest('tr').dataset.id
-
-      await fetch('/data', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({id})
-      })
-
-      loadList()
-    }
-  })
-
-  tbody.querySelectorAll('.edit-btn').forEach(function(button) {
-    button.onclick = function() {
-      startEdit(button.closest('tr'))
-    }
-  })
-}
-
-const startEdit = function(row) {
-  const task     = row.querySelector('.cell-task').textContent
-  const category = row.querySelector('.cell-category').textContent
-  const created  = row.querySelector('.cell-created').textContent
-  const deadline = row.querySelector('.cell-deadline').textContent
-
-  row.innerHTML = `
-    <td><input type="text" class="edit-task" value="${task}"></td>
-    <td><input type="text" class="edit-category" value="${category}"></td>
-  <td><input type="datetime-local" class="edit-created" value="${created}"></td>
-    <td><input type="datetime-local" class="edit-deadline" value="${deadline}"></td>
-    <td>—</td>
-    <td><button class="save-btn">Save</button></td>
-  `
-
-  row.querySelector('.save-btn').onclick = async function() {
-    const id = row.dataset.id
-
-    await fetch('/data', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        id,
-        task: row.querySelector('.edit-task').value,
-        category: row.querySelector('.edit-category').value,
-        creationDate: row.querySelector('.edit-created').value,
-        deadline: row.querySelector('.edit-deadline').value
-      })
-    })
-
-    loadList()
+  function priorityLevel(priority) {
+  switch (priority) {
+    case 'urgent': return 'bg-danger';
+    case 'high': return 'bg-warning text-dark';
+    case 'medium': return 'bg-info text-dark';
+    case 'low': return 'bg-secondary';
+    default: return 'bg-light text-dark';
   }
 }
 
-window.onload = loadList
+  if (editing) {
+    return (
+      <tr>
+        <td><input className="form-control" value={task} onChange={e => setTask(e.target.value)} /></td>
+        <td><input className="form-control" value={category} onChange={e => setCategory(e.target.value)} /></td>
+        <td><input type="datetime-local" className="form-control" value={creationDate} onChange={e => setCreationDate(e.target.value)} /></td>
+        <td><input type="datetime-local" className="form-control" value={deadline} onChange={e => setDeadline(e.target.value)} /></td>
+        <td>—</td>
+        <td>
+          <button
+            className="btn btn-success"
+            onClick={() => {
+              onSave(item._id, { task, category, creationDate, deadline });
+              setEditing(false);
+            }}
+          >
+            Save
+          </button>
+        </td>
+      </tr>
+    );
+  }
+
+  return (
+    <tr>
+      <td>{item.task}</td>
+      <td>{item.category}</td>
+      <td>{item.creationDate}</td>
+      <td>{item.deadline}</td>
+      <td><span className={`badge ${priorityLevel(item.priority)}`}>{item.priority}</span></td>
+      <td>
+        <button className="btn btn-primary" onClick={() => setEditing(true)}>Edit</button>
+        <button className="btn btn-danger ms-1" onClick={() => onDelete(item._id)}>Delete</button>
+      </td>
+    </tr>
+  );
+}
+
+function ToDoList() {
+  const [items, setItems] = useState([]);
+
+  const loadList = async () => {
+    const response = await fetch('/data');
+    const appdata = await response.json();
+    setItems(appdata);
+  };
+
+  useEffect(() => { loadList(); }, []);
+
+  const handleDelete = async (id) => {
+    await fetch('/data', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id })
+    });
+    loadList();
+  };
+
+  const handleSave = async (id, fields) => {
+    await fetch('/data', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, ...fields })
+    });
+    loadList();
+  };
+
+  return items.map(item => (
+    <ToDoRow key={item._id} item={item} onDelete={handleDelete} onSave={handleSave} />
+  ));
+}
+
+const root = ReactDOM.createRoot(document.getElementById('list-body'));
+root.render(<ToDoList />);
