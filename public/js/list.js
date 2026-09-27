@@ -1,13 +1,6 @@
 const { useState, useEffect } = React;
 
-function ToDoRow({ item, onDelete, onSave }) {
-  const [editing, setEditing] = useState(false);
-  const [task, setTask] = useState(item.task);
-  const [category, setCategory] = useState(item.category);
-  const [creationDate, setCreationDate] = useState(item.creationDate);
-  const [deadline, setDeadline] = useState(item.deadline);
-
-  function priorityLevel(priority) {
+function priorityLevelColor(priority) {
   switch (priority) {
     case 'urgent': return 'bg-danger';
     case 'high': return 'bg-warning text-dark';
@@ -16,6 +9,22 @@ function ToDoRow({ item, onDelete, onSave }) {
     default: return 'bg-light text-dark';
   }
 }
+
+function categoryColor(category) {
+  switch (category) {
+    case 'classes': return 'bg-primary';
+    case 'work': return 'bg-danger';
+    case 'personal': return 'bg-success';
+    default: return 'bg-secondary';
+  }
+}
+
+function ToDoRow({ item, onDelete, onSave }) {
+  const [editing, setEditing] = useState(false);
+  const [task, setTask] = useState(item.task);
+  const [category, setCategory] = useState(item.category);
+  const [creationDate, setCreationDate] = useState(item.creationDate);
+  const [deadline, setDeadline] = useState(item.deadline);
 
   if (editing) {
     return (
@@ -43,10 +52,10 @@ function ToDoRow({ item, onDelete, onSave }) {
   return (
     <tr>
       <td>{item.task}</td>
-      <td>{item.category}</td>
+      <td><span className={`badge ${categoryColor(item.category)}`}>{item.category}</span></td>
       <td>{item.creationDate}</td>
       <td>{item.deadline}</td>
-      <td><span className={`badge ${priorityLevel(item.priority)}`}>{item.priority}</span></td>
+      <td><span className={`badge ${priorityLevelColor(item.priority)}`}>{item.priority}</span></td>
       <td>
         <button className="btn btn-primary" onClick={() => setEditing(true)}>Edit</button>
         <button className="btn btn-danger ms-1" onClick={() => onDelete(item._id)}>Delete</button>
@@ -83,6 +92,10 @@ function ToDoList() {
     });
     loadList();
   };
+
+  if (items.length === 0) {
+  return <tr><td colSpan="6" className="text-center text-muted">No tasks yet</td></tr>;
+  }
 
   return items.map(item => (
     <ToDoRow key={item._id} item={item} onDelete={handleDelete} onSave={handleSave} />
